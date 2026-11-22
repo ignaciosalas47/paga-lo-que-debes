@@ -1,344 +1,198 @@
-import { useEffect, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
-import { formatAmount, formatARS, parseArsToCents } from './money.ts'
-import { buildSettlement } from './settle.ts'
-import type { RowIssue, Settlement } from './settle.ts'
+import { useRef, useState, type CSSProperties } from 'react';
+import { Rise } from './components/Rise';
+import { formatCents, parseCents } from './lib/money';
+import { splitBill, type SplitResult } from './lib/split';
+import { resultToText, shareLine, whatsappUrl } from './lib/summary';
+import { useInView } from './lib/useInView';
 
-type Person = {
-  id: string
-  name: string
-  amountText: string
+interface Row {
+  id: number;
+  name: string;
+  amount: string;
+  /** True while the row plays its exit transition, just before it is removed. */
+  leaving?: boolean;
 }
 
-function newPerson(): Person {
-  return { id: crypto.randomUUID(), name: '', amountText: '' }
-}
+/** Must be at least as long as the `.reveal` exit transition in index.css. */
+const LEAVE_MS = 360;
 
 export default function App() {
-  const [people, setPeople] = useState<Person[]>([])
-  const [errors, setErrors] = useState<string[]>([])
-  const [issues, setIssues] = useState<RowIssue[]>([])
-  const [settlement, setSettlement] = useState<Settlement | null>(null)
-  const pendingFocusId = useRef<string | null>(null)
-  const nameInputs = useRef(new Map<string, HTMLInputElement>())
-  const resultRef = useRef<HTMLElement>(null)
+  const nextId = useRef(1);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<SplitResult | null>(null);
 
-  useEffect(() => {
-    const id = pendingFocusId.current
-    if (!id) return
-    nameInputs.current.get(id)?.focus()
-    pendingFocusId.current = null
-  }, [people])
+  /** Applies a change to the rows and discards any stale error or result. */
+  const updateRows = (update: (current: Row[]) => Row[]) => {
+    setRows(update);
+    setError(null);
+    setResult(null);
+  };
 
-  function changePeople(next: Person[]) {
-    setPeople(next)
-    setSettlement(null)
-    setErrors([])
-    setIssues([])
-  }
+  const addPerson = () => updateRows((r) => [...r, { id: nextId.current++, name: '', amount: '' }]);
+  const editRow = (id: number, patch: Partial<Row>) =>
+    updateRows((r) => r.map((row) => (row.id === id ? { ...row, ...patch } : row)));
 
-  function addPerson() {
-    const person = newPerson()
-    pendingFocusId.current = person.id
-    changePeople([...people, person])
-  }
+  /** Collapses the row first, then removes it once the exit transition has finished. */
+  const removePerson = (id: number) => {
+    editRow(id, { leaving: true });
+    window.setTimeout(() => setRows((r) => r.filter((row) => row.id !== id)), LEAVE_MS);
+  };
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const normalized = people.map((person) => {
-      const cents = parseArsToCents(person.amountText)
-      if (cents === null) return person
-      return { ...person, amountText: formatAmount(cents) }
-    })
-    setPeople(normalized)
-    const prepared = buildSettlement(normalized)
-    if (!prepared.ok) {
-      setErrors(prepared.errors)
-      setIssues(prepared.rows)
-      setSettlement(null)
-      return
-    }
-    setErrors([])
-    setIssues([])
-    setSettlement(prepared.settlement)
-    requestAnimationFrame(() => {
-      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    })
-  }
+  /** Validates the form and, when valid, computes the settlement. */
+  const calculate = () => {
+    setResult(null);
+    // Rows left completely blank are ignored instead of being treated as incomplete people.
+    const people = rows.filter((r) => !r.leaving && (r.name.trim() !== '' || r.amount.trim() !== ''));
+
+    if (people.length < 2) return setError('Agregá al menos 2 personas.');
+    if (people.some((r) => r.name.trim() === '')) return setError('Poné un nombre a cada persona.');
+
+    const paid = people.map((r) => parseCents(r.amount));
+    if (paid.some((p) => p === null)) return setError('Revisá los montos: usá números como 1.234,56.');
+    if (paid.some((p) => p! < 0)) return setError('Los montos no pueden ser negativos.');
+    if (paid.every((p) => p === 0)) return setError('Cargá al menos un pago.');
+
+    setError(null);
+    setResult(splitBill(people.map((r, i) => ({ name: r.name.trim(), paid: paid[i]! }))));
+  };
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-[34rem] px-5 pt-12 pb-16 sm:px-6 sm:pt-20">
-      <header className="mb-10 sm:mb-12">
-        <p className="text-[13px] font-medium tracking-[0.01em] text-muted">
-          Pesos argentinos
-        </p>
-        <h1 className="mt-2 text-[40px] leading-[1.05] font-semibold tracking-[-0.035em] text-ink sm:text-[52px]">
-          Dividir la cuenta
-        </h1>
-        <p className="mt-4 max-w-[28rem] text-[17px] leading-[1.45] text-muted">
-          Anotá quién pagó. Te decimos quién le transfiere a quién, con la menor
-          cantidad de pagos.
-        </p>
+    <>
+      <header className="hero">
+        <div className="hero__inner">
+          <Rise>
+            <h1 className="hero__title">Pagá lo que debés</h1>
+          </Rise>
+          <Rise delay={140}>
+            <p className="hero__subtitle">Cargá lo que puso cada uno y calculá quién le paga a quién.</p>
+          </Rise>
+        </div>
       </header>
 
-      <form onSubmit={onSubmit} autoComplete="off" noValidate>
-        <section className="rounded-[22px] bg-card px-5 py-5 shadow-[var(--shadow-card)] sm:px-6">
-          <div className="flex items-baseline justify-between gap-4 px-0.5">
-            <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">
-              Personas
-            </h2>
-            <p className="text-[13px] text-muted">
-              {people.length === 0
-                ? 'Nadie todavía'
-                : people.length === 1
-                  ? '1 persona'
-                  : `${people.length} personas`}
-            </p>
-          </div>
-
-          {people.length === 0 ? (
-            <div className="px-2 py-10 text-center">
-              <p className="text-[17px] font-medium tracking-[-0.01em] text-ink">
-                Nadie en la cuenta
-              </p>
-              <p className="mx-auto mt-1.5 max-w-[16rem] text-[15px] leading-snug text-muted">
-                Agregá a quienes compartieron el gasto y cuánto puso cada uno.
-              </p>
-            </div>
+      <main className="band">
+        <Rise delay={280} className="rise--card">
+          <section className="card">
+          {rows.length === 0 ? (
+            <p className="empty">Nadie en la cuenta</p>
           ) : (
-            <ul className="mt-2">
-              {people.map((person, index) => {
-                const issue = issues.find((row) => row.id === person.id)
-                return (
-                  <li
-                    key={person.id}
-                    className="border-b border-line py-4 last:border-b-0"
-                  >
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 sm:grid-cols-[minmax(0,1fr)_11rem_auto]">
-                      <label className="col-span-2 block min-w-0 sm:col-span-1">
-                        <span className="mb-1.5 block px-0.5 text-[13px] text-muted">
-                          Nombre
-                        </span>
+            <ul className="people">
+              <li className="people__head">
+                <span>Nombre</span>
+                <span>Puso</span>
+                <span />
+              </li>
+              {rows.map((row, i) => (
+                <li key={row.id} className={row.leaving ? 'reveal reveal--leaving' : 'reveal'}>
+                  <div className="reveal__inner">
+                    <div className="person">
+                      <input
+                        className="field"
+                        aria-label={`Nombre de la persona ${i + 1}`}
+                        placeholder="Nombre"
+                        value={row.name}
+                        onChange={(e) => editRow(row.id, { name: e.target.value })}
+                      />
+                      <div className="amount">
+                        <span className="amount__symbol">$</span>
                         <input
-                          ref={(node) => {
-                            if (node) nameInputs.current.set(person.id, node)
-                            else nameInputs.current.delete(person.id)
-                          }}
-                          value={person.name}
-                          onChange={(event) => {
-                            const name = event.target.value
-                            changePeople(
-                              people.map((item) =>
-                                item.id === person.id ? { ...item, name } : item,
-                              ),
-                            )
-                          }}
-                          aria-invalid={issue?.name || undefined}
-                          placeholder={`Persona ${index + 1}`}
-                          className={fieldClass(issue?.name === true)}
+                          className="field"
+                          aria-label={`Monto que puso la persona ${i + 1}`}
+                          inputMode="decimal"
+                          placeholder="0,00"
+                          disabled={row.name.trim() === ''}
+                          value={row.amount}
+                          onChange={(e) => editRow(row.id, { amount: e.target.value })}
                         />
-                      </label>
-                      <label className="block min-w-0">
-                        <span className="mb-1.5 block px-0.5 text-[13px] text-muted">
-                          Pagó
-                        </span>
-                        <span className="relative block">
-                          <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[17px] text-muted">
-                            $
-                          </span>
-                          <input
-                            value={person.amountText}
-                            onChange={(event) => {
-                              const amountText = event.target.value
-                              changePeople(
-                                people.map((item) =>
-                                  item.id === person.id
-                                    ? { ...item, amountText }
-                                    : item,
-                                ),
-                              )
-                            }}
-                            onBlur={() => {
-                              const cents = parseArsToCents(person.amountText)
-                              if (cents === null) return
-                              setPeople((current) =>
-                                current.map((item) =>
-                                  item.id === person.id
-                                    ? { ...item, amountText: formatAmount(cents) }
-                                    : item,
-                                ),
-                              )
-                            }}
-                            inputMode="decimal"
-                            placeholder="0,00"
-                            aria-invalid={issue?.amount || undefined}
-                            className={`${fieldClass(issue?.amount === true)} pr-3 pl-7 text-right tabular-nums`}
-                          />
-                        </span>
-                      </label>
+                      </div>
                       <button
                         type="button"
-                        onClick={() =>
-                          changePeople(
-                            people.filter((item) => item.id !== person.id),
-                          )
-                        }
-                        aria-label={
-                          person.name.trim()
-                            ? `Quitar a ${person.name.trim()}`
-                            : 'Quitar persona'
-                        }
-                        className="h-11 rounded-full px-2 text-[15px] text-danger transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                        className="icon-button"
+                        aria-label={`Sacar a la persona ${i + 1}`}
+                        onClick={() => removePerson(row.id)}
                       >
-                        Quitar
+                        ×
                       </button>
                     </div>
-                  </li>
-                )
-              })}
+                  </div>
+                </li>
+              ))}
             </ul>
           )}
 
-          <button
-            type="button"
-            onClick={addPerson}
-            className="mt-1 flex h-11 w-full items-center gap-2.5 rounded-xl px-0.5 text-[17px] text-accent transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            <PlusMark />
-            Agregar persona
+          <button type="button" className="link-button" onClick={addPerson}>
+            + Agregar persona
           </button>
-        </section>
 
-        {errors.length > 0 && (
-          <div
-            role="alert"
-            className="mt-4 rounded-2xl bg-danger-soft px-4 py-3 text-[15px] leading-snug text-danger"
-          >
-            <ul className="space-y-1">
-              {errors.map((error) => (
-                <li key={error}>{error}</li>
+          <div className="actions" aria-live="polite">
+            {error && (
+              <div className="reveal">
+                <div className="reveal__inner">
+                  <p className="error">{error}</p>
+                </div>
+              </div>
+            )}
+            <button type="button" className="button" onClick={calculate}>
+              Calcular
+            </button>
+          </div>
+
+          {result && <Result result={result} />}
+          </section>
+        </Rise>
+      </main>
+    </>
+  );
+}
+
+/** Index-based stagger for the result items, consumed by `--i` in index.css. */
+const step = (i: number) => ({ '--i': i }) as CSSProperties;
+
+function Result({ result }: { result: SplitResult }) {
+  const [ref, seen] = useInView<HTMLDivElement>(0.2);
+  const lastStep = result.transfers.length + 2;
+
+  return (
+    <div className="reveal reveal--slow">
+      <div className="reveal__inner">
+        <div ref={ref} className={seen ? 'result is-in' : 'result'} aria-live="polite">
+          <p className="result__total result__item" style={step(0)}>
+            Total {formatCents(result.total)}
+          </p>
+          <p className="result__share result__item" style={step(1)}>
+            {shareLine(result.shares)}
+          </p>
+
+          {result.transfers.length === 0 ? (
+            <p className="result__even result__item" style={step(2)}>
+              Todos quedan a mano.
+            </p>
+          ) : (
+            <ul className="transfers">
+              {result.transfers.map((t, i) => (
+                <li key={i} className="transfer result__item" style={step(i + 2)}>
+                  <strong>{t.from}</strong> le paga <strong className="num">{formatCents(t.amount)}</strong> a{' '}
+                  <strong>{t.to}</strong>
+                </li>
               ))}
             </ul>
-          </div>
-        )}
+          )}
 
-        <button
-          type="submit"
-          className="mt-5 h-[50px] w-full rounded-full bg-accent text-[17px] font-medium text-white transition-colors hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:bg-[#006edb]"
-        >
-          Calcular
-        </button>
-      </form>
-
-      <section ref={resultRef} aria-live="polite" className="mt-12">
-        <h2 className="px-1 text-[13px] font-medium text-muted">
-          Quién le paga a quién
-        </h2>
-        {settlement === null ? (
-          <p className="mt-2 max-w-sm px-1 text-[15px] leading-snug text-muted">
-            {people.length === 0
-              ? 'Cuando agregues personas, el reparto va a aparecer acá.'
-              : 'Tocá Calcular para ver las transferencias.'}
-          </p>
-        ) : (
-          <Result settlement={settlement} />
-        )}
-      </section>
-    </main>
-  )
-}
-
-function Result({ settlement }: { settlement: Settlement }) {
-  return (
-    <div className="mt-3 overflow-hidden rounded-[22px] bg-card shadow-[var(--shadow-card)]">
-      <div className="px-6 pt-6 pb-5">
-        <p className="text-[13px] font-medium text-muted">Total</p>
-        <p className="mt-1 text-[34px] leading-none font-semibold tracking-[-0.03em] text-ink tabular-nums">
-          {formatARS(settlement.totalCents)}
-        </p>
-        <p className="mt-3 text-[15px] leading-snug text-muted">
-          {settlement.people.length}{' '}
-          {settlement.people.length === 1 ? 'persona' : 'personas'}
-        </p>
-        <p className="mt-1 text-[15px] leading-snug text-ink">{shareCopy(settlement)}</p>
-      </div>
-
-      {settlement.settled ? (
-        <div className="border-t border-line px-6 py-8 text-center">
-          <span className="mx-auto grid size-11 place-items-center rounded-full bg-success-soft text-success">
-            <CheckMark />
-          </span>
-          <p className="mt-3 text-[20px] font-semibold tracking-[-0.02em] text-ink">
-            Todos están a mano.
-          </p>
-          <p className="mt-1 text-[15px] text-muted">Nadie le debe a nadie.</p>
-        </div>
-      ) : (
-        <ol className="border-t border-line">
-          {settlement.transfers.map((transfer) => (
-            <li
-              key={`${transfer.fromId}-${transfer.toId}`}
-              className="flex items-baseline justify-between gap-4 border-b border-line px-6 py-4 last:border-b-0"
+          <div className="result__item result__cta" style={step(lastStep)}>
+            <a
+              className="button button--whatsapp"
+              href={whatsappUrl(resultToText(result))}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              <p className="text-[17px] leading-snug text-pretty text-ink">
-                <span className="font-medium">{transfer.fromName}</span>
-                <span className="text-muted"> le paga a </span>
-                <span className="font-medium">{transfer.toName}</span>
-              </p>
-              <p className="shrink-0 text-[17px] font-semibold tracking-[-0.02em] text-ink tabular-nums">
-                {formatARS(transfer.cents)}
-              </p>
-            </li>
-          ))}
-        </ol>
-      )}
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+            </svg>
+              Enviar por WhatsApp
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
-  )
-}
-
-function shareCopy(settlement: Settlement): string {
-  const base = formatARS(settlement.shareBaseCents)
-  if (settlement.remainderCount === 0) {
-    return `A cada uno le tocan ${base}.`
-  }
-  const extra = formatARS(settlement.shareBaseCents + 1)
-  if (settlement.remainderCount === 1) {
-    return `A cada uno le tocan ${base}. La primera persona de la lista recibe un centavo más (${extra}).`
-  }
-  return `A cada uno le tocan ${base}. Las primeras ${settlement.remainderCount} personas de la lista reciben un centavo más (${extra}).`
-}
-
-function fieldClass(invalid: boolean): string {
-  const state = invalid
-    ? 'bg-white ring-2 ring-[#ff3b30]'
-    : 'bg-fill focus:bg-white focus:ring-2 focus:ring-accent/30'
-  return `h-11 w-full rounded-xl px-3 text-[17px] text-ink outline-none transition-colors placeholder:text-[#aeaeb2] ${state}`
-}
-
-function PlusMark() {
-  return (
-    <svg viewBox="0 0 22 22" className="size-[22px] shrink-0" aria-hidden="true">
-      <circle cx="11" cy="11" r="11" className="fill-accent" />
-      <path
-        d="M11 6.25v9.5M6.25 11h9.5"
-        stroke="white"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function CheckMark() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-6" fill="none" aria-hidden="true">
-      <path
-        d="M6.5 12.5 10.2 16.2 17.5 8"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
+  );
 }
