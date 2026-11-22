@@ -67,25 +67,27 @@ export default function App() {
   }
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-xl px-5 py-14 sm:px-6 sm:py-20">
-      <header className="mb-10">
-        <p className="text-sm font-medium tracking-wide text-accent">
+    <main className="mx-auto min-h-svh w-full max-w-[34rem] px-5 pt-12 pb-16 sm:px-6 sm:pt-20">
+      <header className="mb-10 sm:mb-12">
+        <p className="text-[13px] font-medium tracking-[0.01em] text-muted">
           Pesos argentinos
         </p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
+        <h1 className="mt-2 text-[40px] leading-[1.05] font-semibold tracking-[-0.035em] text-ink sm:text-[52px]">
           Dividir la cuenta
         </h1>
-        <p className="mt-4 max-w-md text-base leading-relaxed text-muted">
+        <p className="mt-4 max-w-[28rem] text-[17px] leading-[1.45] text-muted">
           Anotá quién pagó. Te decimos quién le transfiere a quién, con la menor
           cantidad de pagos.
         </p>
       </header>
 
       <form onSubmit={onSubmit} autoComplete="off" noValidate>
-        <section className="rounded-3xl bg-card px-5 py-6 shadow-[0_24px_50px_-32px_rgba(28,25,22,0.45)] ring-1 ring-line sm:px-7">
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-lg font-medium text-ink">Personas</h2>
-            <p className="text-sm text-muted">
+        <section className="rounded-[22px] bg-card px-5 py-5 shadow-[var(--shadow-card)] sm:px-6">
+          <div className="flex items-baseline justify-between gap-4 px-0.5">
+            <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">
+              Personas
+            </h2>
+            <p className="text-[13px] text-muted">
               {people.length === 0
                 ? 'Nadie todavía'
                 : people.length === 1
@@ -95,9 +97,11 @@ export default function App() {
           </div>
 
           {people.length === 0 ? (
-            <div className="mt-6 rounded-2xl border border-dashed border-line px-4 py-12 text-center">
-              <p className="text-base font-medium text-ink">Nadie en la cuenta</p>
-              <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted">
+            <div className="px-2 py-10 text-center">
+              <p className="text-[17px] font-medium tracking-[-0.01em] text-ink">
+                Nadie en la cuenta
+              </p>
+              <p className="mx-auto mt-1.5 max-w-[16rem] text-[15px] leading-snug text-muted">
                 Agregá a quienes compartieron el gasto y cuánto puso cada uno.
               </p>
             </div>
@@ -108,83 +112,87 @@ export default function App() {
                 return (
                   <li
                     key={person.id}
-                    className="grid gap-3 border-b border-line py-5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_10.5rem_auto] sm:items-end sm:gap-4"
+                    className="border-b border-line py-4 last:border-b-0"
                   >
-                    <label className="block min-w-0">
-                      <span className="mb-1.5 block text-xs font-medium text-muted">
-                        Nombre
-                      </span>
-                      <input
-                        ref={(node) => {
-                          if (node) nameInputs.current.set(person.id, node)
-                          else nameInputs.current.delete(person.id)
-                        }}
-                        value={person.name}
-                        onChange={(event) => {
-                          const name = event.target.value
-                          changePeople(
-                            people.map((item) =>
-                              item.id === person.id ? { ...item, name } : item,
-                            ),
-                          )
-                        }}
-                        aria-invalid={issue?.name || undefined}
-                        placeholder={`Persona ${index + 1}`}
-                        className={fieldClass(issue?.name === true)}
-                      />
-                    </label>
-                    <label className="block min-w-0">
-                      <span className="mb-1.5 block text-xs font-medium text-muted">
-                        Pagó
-                      </span>
-                      <span className="relative block">
-                        <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted">
-                          $
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 sm:grid-cols-[minmax(0,1fr)_11rem_auto]">
+                      <label className="col-span-2 block min-w-0 sm:col-span-1">
+                        <span className="mb-1.5 block px-0.5 text-[13px] text-muted">
+                          Nombre
                         </span>
                         <input
-                          value={person.amountText}
+                          ref={(node) => {
+                            if (node) nameInputs.current.set(person.id, node)
+                            else nameInputs.current.delete(person.id)
+                          }}
+                          value={person.name}
                           onChange={(event) => {
-                            const amountText = event.target.value
+                            const name = event.target.value
                             changePeople(
                               people.map((item) =>
-                                item.id === person.id
-                                  ? { ...item, amountText }
-                                  : item,
+                                item.id === person.id ? { ...item, name } : item,
                               ),
                             )
                           }}
-                          onBlur={() => {
-                            const cents = parseArsToCents(person.amountText)
-                            if (cents === null) return
-                            setPeople((current) =>
-                              current.map((item) =>
-                                item.id === person.id
-                                  ? { ...item, amountText: formatAmount(cents) }
-                                  : item,
-                              ),
-                            )
-                          }}
-                          inputMode="decimal"
-                          placeholder="0,00"
-                          aria-invalid={issue?.amount || undefined}
-                          className={`${fieldClass(issue?.amount === true)} pr-3 pl-7 text-right tabular-nums`}
+                          aria-invalid={issue?.name || undefined}
+                          placeholder={`Persona ${index + 1}`}
+                          className={fieldClass(issue?.name === true)}
                         />
-                      </span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        changePeople(people.filter((item) => item.id !== person.id))
-                      }
-                      aria-label={
-                        person.name.trim()
-                          ? `Quitar a ${person.name.trim()}`
-                          : 'Quitar persona'
-                      }
-                      className="mb-0.5 rounded-xl px-2 py-2.5 text-sm text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                    >
-                      Quitar
-                    </button>
+                      </label>
+                      <label className="block min-w-0">
+                        <span className="mb-1.5 block px-0.5 text-[13px] text-muted">
+                          Pagó
+                        </span>
+                        <span className="relative block">
+                          <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[17px] text-muted">
+                            $
+                          </span>
+                          <input
+                            value={person.amountText}
+                            onChange={(event) => {
+                              const amountText = event.target.value
+                              changePeople(
+                                people.map((item) =>
+                                  item.id === person.id
+                                    ? { ...item, amountText }
+                                    : item,
+                                ),
+                              )
+                            }}
+                            onBlur={() => {
+                              const cents = parseArsToCents(person.amountText)
+                              if (cents === null) return
+                              setPeople((current) =>
+                                current.map((item) =>
+                                  item.id === person.id
+                                    ? { ...item, amountText: formatAmount(cents) }
+                                    : item,
+                                ),
+                              )
+                            }}
+                            inputMode="decimal"
+                            placeholder="0,00"
+                            aria-invalid={issue?.amount || undefined}
+                            className={`${fieldClass(issue?.amount === true)} pr-3 pl-7 text-right tabular-nums`}
+                          />
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          changePeople(
+                            people.filter((item) => item.id !== person.id),
+                          )
+                        }
+                        aria-label={
+                          person.name.trim()
+                            ? `Quitar a ${person.name.trim()}`
+                            : 'Quitar persona'
+                        }
+                        className="h-11 rounded-full px-2 text-[15px] text-danger transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                      >
+                        Quitar
+                      </button>
+                    </div>
                   </li>
                 )
               })}
@@ -194,8 +202,9 @@ export default function App() {
           <button
             type="button"
             onClick={addPerson}
-            className="mt-4 w-full rounded-2xl border border-dashed border-line px-4 py-3 text-sm font-medium text-ink hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="mt-1 flex h-11 w-full items-center gap-2.5 rounded-xl px-0.5 text-[17px] text-accent transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
+            <PlusMark />
             Agregar persona
           </button>
         </section>
@@ -203,7 +212,7 @@ export default function App() {
         {errors.length > 0 && (
           <div
             role="alert"
-            className="mt-5 rounded-2xl bg-white px-4 py-3 text-sm text-danger ring-1 ring-danger-line"
+            className="mt-4 rounded-2xl bg-danger-soft px-4 py-3 text-[15px] leading-snug text-danger"
           >
             <ul className="space-y-1">
               {errors.map((error) => (
@@ -215,16 +224,18 @@ export default function App() {
 
         <button
           type="submit"
-          className="mt-5 w-full rounded-2xl bg-accent px-4 py-3.5 text-base font-medium text-white hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="mt-5 h-[50px] w-full rounded-full bg-accent text-[17px] font-medium text-white transition-colors hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:bg-[#006edb]"
         >
           Calcular
         </button>
       </form>
 
       <section ref={resultRef} aria-live="polite" className="mt-12">
-        <h2 className="text-lg font-medium text-ink">Quién le paga a quién</h2>
+        <h2 className="px-1 text-[13px] font-medium text-muted">
+          Quién le paga a quién
+        </h2>
         {settlement === null ? (
-          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">
+          <p className="mt-2 max-w-sm px-1 text-[15px] leading-snug text-muted">
             {people.length === 0
               ? 'Cuando agregues personas, el reparto va a aparecer acá.'
               : 'Tocá Calcular para ver las transferencias.'}
@@ -239,28 +250,43 @@ export default function App() {
 
 function Result({ settlement }: { settlement: Settlement }) {
   return (
-    <div className="mt-4">
-      <p className="text-sm text-muted">
-        Total {formatARS(settlement.totalCents)} · {settlement.people.length}{' '}
-        {settlement.people.length === 1 ? 'persona' : 'personas'}
-      </p>
-      <p className="mt-1 text-sm leading-relaxed text-ink">{shareCopy(settlement)}</p>
+    <div className="mt-3 overflow-hidden rounded-[22px] bg-card shadow-[var(--shadow-card)]">
+      <div className="px-6 pt-6 pb-5">
+        <p className="text-[13px] font-medium text-muted">Total</p>
+        <p className="mt-1 text-[34px] leading-none font-semibold tracking-[-0.03em] text-ink tabular-nums">
+          {formatARS(settlement.totalCents)}
+        </p>
+        <p className="mt-3 text-[15px] leading-snug text-muted">
+          {settlement.people.length}{' '}
+          {settlement.people.length === 1 ? 'persona' : 'personas'}
+        </p>
+        <p className="mt-1 text-[15px] leading-snug text-ink">{shareCopy(settlement)}</p>
+      </div>
 
       {settlement.settled ? (
-        <div className="mt-6 rounded-3xl bg-accent-soft px-5 py-8">
-          <p className="text-lg font-medium text-accent">Todos están a mano.</p>
-          <p className="mt-1 text-sm text-muted">Nadie le debe a nadie.</p>
+        <div className="border-t border-line px-6 py-8 text-center">
+          <span className="mx-auto grid size-11 place-items-center rounded-full bg-success-soft text-success">
+            <CheckMark />
+          </span>
+          <p className="mt-3 text-[20px] font-semibold tracking-[-0.02em] text-ink">
+            Todos están a mano.
+          </p>
+          <p className="mt-1 text-[15px] text-muted">Nadie le debe a nadie.</p>
         </div>
       ) : (
-        <ol className="mt-6 divide-y divide-line">
+        <ol className="border-t border-line">
           {settlement.transfers.map((transfer) => (
-            <li key={`${transfer.fromId}-${transfer.toId}`} className="py-4">
-              <p className="text-base leading-relaxed text-pretty text-ink">
-                <span className="font-medium">{transfer.fromName}</span> le paga{' '}
-                <span className="font-medium text-accent tabular-nums">
-                  {formatARS(transfer.cents)}
-                </span>{' '}
-                a <span className="font-medium">{transfer.toName}</span>
+            <li
+              key={`${transfer.fromId}-${transfer.toId}`}
+              className="flex items-baseline justify-between gap-4 border-b border-line px-6 py-4 last:border-b-0"
+            >
+              <p className="text-[17px] leading-snug text-pretty text-ink">
+                <span className="font-medium">{transfer.fromName}</span>
+                <span className="text-muted"> le paga a </span>
+                <span className="font-medium">{transfer.toName}</span>
+              </p>
+              <p className="shrink-0 text-[17px] font-semibold tracking-[-0.02em] text-ink tabular-nums">
+                {formatARS(transfer.cents)}
               </p>
             </li>
           ))}
@@ -283,8 +309,36 @@ function shareCopy(settlement: Settlement): string {
 }
 
 function fieldClass(invalid: boolean): string {
-  const border = invalid
-    ? 'border-danger-line ring-1 ring-danger-line'
-    : 'border-line focus:border-accent'
-  return `w-full rounded-xl border bg-card px-3 py-2.5 text-ink outline-none ${border}`
+  const state = invalid
+    ? 'bg-white ring-2 ring-[#ff3b30]'
+    : 'bg-fill focus:bg-white focus:ring-2 focus:ring-accent/30'
+  return `h-11 w-full rounded-xl px-3 text-[17px] text-ink outline-none transition-colors placeholder:text-[#aeaeb2] ${state}`
+}
+
+function PlusMark() {
+  return (
+    <svg viewBox="0 0 22 22" className="size-[22px] shrink-0" aria-hidden="true">
+      <circle cx="11" cy="11" r="11" className="fill-accent" />
+      <path
+        d="M11 6.25v9.5M6.25 11h9.5"
+        stroke="white"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function CheckMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-6" fill="none" aria-hidden="true">
+      <path
+        d="M6.5 12.5 10.2 16.2 17.5 8"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
