@@ -17,8 +17,8 @@ interface Row {
 const LEAVE_MS = 360;
 
 export default function App() {
-  const nextId = useRef(1);
-  const [rows, setRows] = useState<Row[]>([]);
+  const nextId = useRef(2);
+  const [rows, setRows] = useState<Row[]>([{ id: 1, name: '', amount: '' }]);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SplitResult | null>(null);
 
@@ -62,7 +62,7 @@ export default function App() {
       <header className="hero">
         <div className="hero__inner">
           <Rise>
-            <h1 className="hero__title">Pagá lo que debés</h1>
+            <h1 className="hero__title">Pagá lo que debés🐀</h1>
           </Rise>
           <Rise delay={140}>
             <p className="hero__subtitle">Cargá lo que puso cada uno y calculá quién le paga a quién.</p>
@@ -120,10 +120,6 @@ export default function App() {
             </ul>
           )}
 
-          <button type="button" className="link-button" onClick={addPerson}>
-            + Agregar persona
-          </button>
-
           <div className="actions" aria-live="polite">
             {error && (
               <div className="reveal">
@@ -132,14 +128,31 @@ export default function App() {
                 </div>
               </div>
             )}
-            <button type="button" className="button" onClick={calculate}>
-              Calcular
-            </button>
+            <div className="actions__buttons">
+              <button type="button" className="button button--outline" onClick={calculate}>
+                Calcular
+              </button>
+              <button type="button" className="button" onClick={addPerson}>
+                <svg aria-hidden="true" viewBox="0 0 16 16" width="15" height="15">
+                  <path
+                    d="M8 2.25v11.5M2.25 8h11.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                Agregar persona
+              </button>
+            </div>
           </div>
 
           {result && <Result result={result} />}
           </section>
         </Rise>
+        <footer className="site-footer">
+          <p>Copyright © 2026 Ignacio Salas. Todos los derechos reservados.</p>
+        </footer>
       </main>
     </>
   );
