@@ -38,14 +38,19 @@ describe('splitBill', () => {
     );
   });
 
-  it('gives leftover cents to the first people and keeps the sum exact', () => {
+  it('rounds every share down and drops the leftover cents', () => {
     const r = splitBill([
-      { name: 'A', paid: 1000 },
+      { name: 'A', paid: 5000 },
       { name: 'B', paid: 0 },
       { name: 'C', paid: 0 },
     ]);
-    expect(r.shares).toEqual([334, 333, 333]);
-    expect(r.shares.reduce((a, b) => a + b, 0)).toBe(1000);
+    expect(r.shares).toEqual([1666, 1666, 1666]);
+    expect(r.transfers).toEqual(
+      expect.arrayContaining([
+        { from: 'B', to: 'A', amount: 1666 },
+        { from: 'C', to: 'A', amount: 1666 },
+      ]),
+    );
   });
 
   it('returns no transfers when everyone is even', () => {

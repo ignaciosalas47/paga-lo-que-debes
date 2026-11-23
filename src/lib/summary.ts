@@ -10,36 +10,23 @@ export function shareLine(shares: number[]): string {
     : `A cada uno le tocan entre ${formatCents(min)} y ${formatCents(max)}`;
 }
 
-/** Parenthetical fair share for the WhatsApp message. A range when leftover cents make parts differ. */
-function whatsappShareLine(shares: number[]): string {
-  const min = Math.min(...shares);
-  const max = Math.max(...shares);
-  const body =
-    min === max
-      ? `Total por persona ${formatCents(min)}`
-      : `Total por persona entre ${formatCents(min)} y ${formatCents(max)}`;
-  return `(${body})`;
-}
-
-/** Wraps a name or amount so WhatsApp renders it in bold. */
-function bold(text: string): string {
-  return `*${text}*`;
-}
-
 /** Builds the plain-text version of a result, ready to paste into WhatsApp. */
 export function resultToText(result: SplitResult): string {
+  const share = result.shares[0] ?? 0;
   const lines = [
-    `Gastos en Total ${formatCents(result.total)}`,
-    whatsappShareLine(result.shares),
+    `*Total de gastos ${formatCents(result.total)}*`,
+    `(${formatCents(share)} por persona)`,
     '',
-    ...result.people.map((p) => `- ${p.name} puso ${formatCents(p.paid)}`),
+    'Pusieron',
+    ...result.people.map((p) => `- ${p.name}: ${formatCents(p.paid)}`),
     '',
   ];
   if (result.transfers.length === 0) {
-    lines.push('- Todos quedan a mano.');
+    lines.push('Todos quedan a mano.');
   } else {
+    lines.push('Tienen que pagar');
     for (const t of result.transfers) {
-      lines.push(`- ${bold(t.from)} le paga ${bold(formatCents(t.amount))} a ${bold(t.to)}`);
+      lines.push(`- *${t.from}: ${formatCents(t.amount)}* a *${t.to}*`);
     }
   }
   return lines.join('\n');

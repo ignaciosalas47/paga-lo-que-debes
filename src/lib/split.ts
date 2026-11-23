@@ -13,7 +13,7 @@ export interface Transfer {
 
 export interface SplitResult {
   total: number;
-  /** Fair share per person, in the same order as the input. Sums exactly to total. */
+  /** Fair share per person, in the same order as the input. Each value is floor(total / n); leftover cents are dropped. */
   shares: number[];
   /** Who paid what, in the same order as the input. */
   people: Person[];
@@ -29,20 +29,29 @@ interface Balance {
 }
 
 /**
- * Computes who pays whom. The fair share is floor(total / n); the leftover cents go
- * one each to the first people so the shares add up to the total exactly.
+ * Computes who pays whom. Each share is floor(total / n). Leftover cents are dropped
+ * so everyone owes the same amount; whoever paid more keeps those cents.
  */
 export function splitBill(people: Person[]): SplitResult {
   const total = people.reduce((sum, p) => sum + p.paid, 0);
-  const base = Math.floor(total / people.length);
-  const extra = total - base * people.length;
-  const shares = people.map((_, i) => base + (i < extra ? 1 : 0));
+  const share = Math.floor(total / people.length);
+  const shares = people.map(() => share);
 
   const balances = people
-    .map((p, i) => ({ name: p.name, amount: p.paid - shares[i]! }))
+    .map((p) => ({ name: p.name, amount: p.paid - share }))
     .filter((b) => b.amount !== 0);
 
-  return { total, shares, people, transfers: minimizeTransfers(balances) };
+  // Dropped cents stay with whoever paid more, so the balances we settle still sum to zero.
+  let leftover = total - share * people.length;
+  const creditors = balances.filter((b) => b.amount > 0).sort((a, b) => b.amount - a.amount);
+  for (const creditor of creditors) {
+    if (leftover === 0) break;
+    const drop = Math.min(leftover, creditor.amount);
+    creditor.amount -= drop;
+    leftover -= drop;
+  }
+
+  return { total, shares, people, transfers: minimizeTransfers(balances.filter((b) => b.amount !== 0)) };
 }
 
 /**
