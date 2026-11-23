@@ -57,6 +57,8 @@ export default function App() {
   /** Validates the form and, when valid, computes the settlement. */
   const calculate = () => {
     setResult(null);
+    // Blur the focused field so both the text keyboard and the numeric keypad close.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     // Rows left completely blank are ignored instead of being treated as incomplete people.
     const people = rows.filter((r) => !r.leaving && (r.name.trim() !== '' || r.amount.trim() !== ''));
 
@@ -69,7 +71,6 @@ export default function App() {
     if (paid.every((p) => p === 0)) return setError('Cargá al menos un pago.');
 
     setError(null);
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     setResult(splitBill(people.map((r, i) => ({ name: r.name.trim(), paid: paid[i]! }))));
   };
 
