@@ -17,8 +17,8 @@ interface Row {
 const LEAVE_MS = 360;
 
 export default function App() {
-  const nextId = useRef(1);
-  const [rows, setRows] = useState<Row[]>([]);
+  const nextId = useRef(2);
+  const [rows, setRows] = useState<Row[]>([{ id: 1, name: '', amount: '' }]);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SplitResult | null>(null);
 
@@ -129,7 +129,10 @@ export default function App() {
               </div>
             )}
             <div className="actions__buttons">
-              <button type="button" className="button button--outline" onClick={addPerson}>
+              <button type="button" className="button button--outline" onClick={calculate}>
+                Calcular
+              </button>
+              <button type="button" className="button" onClick={addPerson}>
                 <svg aria-hidden="true" viewBox="0 0 16 16" width="15" height="15">
                   <path
                     d="M8 2.25v11.5M2.25 8h11.5"
@@ -140,9 +143,6 @@ export default function App() {
                   />
                 </svg>
                 Agregar persona
-              </button>
-              <button type="button" className="button" onClick={calculate}>
-                Calcular
               </button>
             </div>
           </div>
