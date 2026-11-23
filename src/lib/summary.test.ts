@@ -21,35 +21,42 @@ describe('resultToText', () => {
       ]),
     );
     expect(text.split('\n')).toEqual([
-      'Gastos en Total $ 120,00',
-      '(Total por persona $ 30,00)',
+      '*Total de gastos $ 120,00*',
+      '($ 30,00 por persona)',
       '',
-      '- A puso $ 100,00',
-      '- B puso $ 20,00',
-      '- C puso $ 0,00',
-      '- D puso $ 0,00',
+      'Pusieron',
+      '- A: $ 100,00',
+      '- B: $ 20,00',
+      '- C: $ 0,00',
+      '- D: $ 0,00',
       '',
-      expect.stringMatching(/^- \*[BCD]\* le paga \*\$ (10|30),00\* a \*A\*$/),
-      expect.stringMatching(/^- \*[BCD]\* le paga \*\$ (10|30),00\* a \*A\*$/),
-      expect.stringMatching(/^- \*[BCD]\* le paga \*\$ (10|30),00\* a \*A\*$/),
+      'Tienen que pagar',
+      expect.stringMatching(/^- \*[BCD]: \$ (10|30),00\* a \*A\*$/),
+      expect.stringMatching(/^- \*[BCD]: \$ (10|30),00\* a \*A\*$/),
+      expect.stringMatching(/^- \*[BCD]: \$ (10|30),00\* a \*A\*$/),
     ]);
   });
 
-  it('puts the per-person total in parentheses and lists what each person paid', () => {
+  it('shows one rounded-down amount when the total does not divide evenly', () => {
     const text = resultToText(
       splitBill([
-        { name: 'A', paid: 1000 },
+        { name: 'A', paid: 5000 },
         { name: 'B', paid: 0 },
         { name: 'C', paid: 0 },
       ]),
     );
-    expect(text.split('\n').slice(0, 6)).toEqual([
-      'Gastos en Total $ 10,00',
-      '(Total por persona entre $ 3,33 y $ 3,34)',
+    expect(text.split('\n')).toEqual([
+      '*Total de gastos $ 50,00*',
+      '($ 16,66 por persona)',
       '',
-      '- A puso $ 10,00',
-      '- B puso $ 0,00',
-      '- C puso $ 0,00',
+      'Pusieron',
+      '- A: $ 50,00',
+      '- B: $ 0,00',
+      '- C: $ 0,00',
+      '',
+      'Tienen que pagar',
+      expect.stringMatching(/^- \*[BC]: \$ 16,66\* a \*A\*$/),
+      expect.stringMatching(/^- \*[BC]: \$ 16,66\* a \*A\*$/),
     ]);
   });
 
@@ -60,6 +67,7 @@ describe('resultToText', () => {
         { name: 'B', paid: 1000 },
       ]),
     );
-    expect(text).toContain('- Todos quedan a mano.');
+    expect(text).toContain('Todos quedan a mano.');
+    expect(text).not.toContain('Tienen que pagar');
   });
 });
