@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Rise } from './components/Rise';
 import { formatCents, parseCents } from './lib/money';
 import { splitBill, type SplitResult } from './lib/split';
@@ -18,9 +18,24 @@ const LEAVE_MS = 360;
 
 export default function App() {
   const nextId = useRef(2);
+  const resultRef = useRef<HTMLDivElement>(null);
   const [rows, setRows] = useState<Row[]>([{ id: 1, name: '', amount: '' }]);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SplitResult | null>(null);
+
+  /** Brings a fresh result into view once the on-screen keyboard has started closing. */
+  useEffect(() => {
+    if (!result) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const scroll = () =>
+      resultRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    if (reduce) {
+      scroll();
+      return;
+    }
+    const id = window.setTimeout(scroll, 300);
+    return () => window.clearTimeout(id);
+  }, [result]);
 
   /** Applies a change to the rows and discards any stale error or result. */
   const updateRows = (update: (current: Row[]) => Row[]) => {
@@ -54,6 +69,7 @@ export default function App() {
     if (paid.every((p) => p === 0)) return setError('Cargá al menos un pago.');
 
     setError(null);
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     setResult(splitBill(people.map((r, i) => ({ name: r.name.trim(), paid: paid[i]! }))));
   };
 
@@ -147,7 +163,11 @@ export default function App() {
             </div>
           </div>
 
-          {result && <Result result={result} />}
+          {result && (
+            <div ref={resultRef} className="result-anchor">
+              <Result result={result} />
+            </div>
+          )}
           </section>
         </Rise>
         <footer className="site-footer">
