@@ -15,6 +15,8 @@ export interface SplitResult {
   total: number;
   /** Fair share per person, in the same order as the input. Sums exactly to total. */
   shares: number[];
+  /** Who paid what, in the same order as the input. */
+  people: Person[];
   transfers: Transfer[];
 }
 
@@ -40,7 +42,7 @@ export function splitBill(people: Person[]): SplitResult {
     .map((p, i) => ({ name: p.name, amount: p.paid - shares[i]! }))
     .filter((b) => b.amount !== 0);
 
-  return { total, shares, transfers: minimizeTransfers(balances) };
+  return { total, shares, people, transfers: minimizeTransfers(balances) };
 }
 
 /**

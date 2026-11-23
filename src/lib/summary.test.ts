@@ -21,12 +21,35 @@ describe('resultToText', () => {
       ]),
     );
     expect(text.split('\n')).toEqual([
-      'Total $ 120,00',
-      'A cada uno le tocan $ 30,00',
+      'Gastos en Total $ 120,00',
+      '(Total por persona $ 30,00)',
       '',
-      expect.stringMatching(/^[BCD] le paga \$ (10|30),00 a A$/),
-      expect.stringMatching(/^[BCD] le paga \$ (10|30),00 a A$/),
-      expect.stringMatching(/^[BCD] le paga \$ (10|30),00 a A$/),
+      '- A puso $ 100,00',
+      '- B puso $ 20,00',
+      '- C puso $ 0,00',
+      '- D puso $ 0,00',
+      '',
+      expect.stringMatching(/^- \*[BCD]\* le paga \*\$ (10|30),00\* a \*A\*$/),
+      expect.stringMatching(/^- \*[BCD]\* le paga \*\$ (10|30),00\* a \*A\*$/),
+      expect.stringMatching(/^- \*[BCD]\* le paga \*\$ (10|30),00\* a \*A\*$/),
+    ]);
+  });
+
+  it('puts the per-person total in parentheses and lists what each person paid', () => {
+    const text = resultToText(
+      splitBill([
+        { name: 'A', paid: 1000 },
+        { name: 'B', paid: 0 },
+        { name: 'C', paid: 0 },
+      ]),
+    );
+    expect(text.split('\n').slice(0, 6)).toEqual([
+      'Gastos en Total $ 10,00',
+      '(Total por persona entre $ 3,33 y $ 3,34)',
+      '',
+      '- A puso $ 10,00',
+      '- B puso $ 0,00',
+      '- C puso $ 0,00',
     ]);
   });
 
@@ -37,6 +60,6 @@ describe('resultToText', () => {
         { name: 'B', paid: 1000 },
       ]),
     );
-    expect(text).toContain('Todos quedan a mano.');
+    expect(text).toContain('- Todos quedan a mano.');
   });
 });
