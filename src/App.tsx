@@ -146,9 +146,6 @@ export default function App() {
               </div>
             )}
             <div className="actions__buttons">
-              <button type="button" className="button button--outline" onClick={calculate}>
-                Calcular
-              </button>
               <button type="button" className="button" onClick={addPerson}>
                 <svg aria-hidden="true" viewBox="0 0 16 16" width="15" height="15">
                   <path
@@ -160,6 +157,9 @@ export default function App() {
                   />
                 </svg>
                 Agregar persona
+              </button>
+              <button type="button" className="button button--outline" onClick={calculate}>
+                Calcular
               </button>
             </div>
           </div>
